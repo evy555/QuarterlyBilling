@@ -10,6 +10,7 @@ from PIL import Image, ImageTk
 from tkinter import filedialog
 import datetime
 from datetime import datetime
+from io import StringIO
 
 
 
@@ -157,7 +158,7 @@ class FileSelection(tk.Frame):
         directions['yscrollcommand'] = scroll.set
 
 
-        directions.insert(tk.END,"""The files necessary for billing can be found in the following location:\n\nHoldings file: Black Diamond Rebalancer Report. Find this file by clicking on the Rebalancer Report under the Skypages tab. Run the report on the All Portfolios Select Level, and download the report to CSV. \n\nBilling file: Black Diamond Run Billing Report. To access the file, Run Client Billing in Setup. Make sure to run billing for the Billing Family Accounts only advisor. Export the csv file and if given the option of type to export, make sure to export the Black Diamond Export.\n\nTransactions file: Black Diamond Transactions report. Find this file by clicking on Transactions under the Skypages tab. Change the date range to the last 30 days and run the report. You can then export the csv file.\n\nPortAccount file: Black Diamond Data Mining. Find this file by clicking on Data Mining under the Skypages tab. select the account number and portfolio name options, then process the data mining. export the csv.\n\nCashavailable file: Wealth Scape All Accounts Summary Page. Export the csv for the All Accounts summary page. Make sure your summary page includes the account number column and the cash available to withdraw column.\n""")
+        directions.insert(tk.END,"""The files necessary for billing can be found in the following location:\n\nHoldings file: Black Diamond Rebalancer Report. Find this file by clicking on the Rebalancer Report under the Skypages tab. Run the report on the All Portfolios Select Level, and download the report to CSV. \n\nBilling file: Black Diamond Run Billing Report. To access the file, Run Client Billing in Setup. Make sure to run billing for the Billing Family Accounts only advisor. Export the csv file and if given the option of type to export, make sure to export the Black Diamond Export.\n\nTransactions file: Black Diamond Transactions report. Find this file by clicking on Transactions under the Skypages tab. Change the date range to the last 30 days and run the report. You can then export the csv file. IMPORTANT: You need to open the Transactions CSV in Excel and re-save it as a csv to fix an error with how the csv is structured directly from Black Diamond.\n\nPortAccount file: Black Diamond Data Mining. Find this file by clicking on Data Mining under the Skypages tab. select the account number and portfolio name options, then process the data mining. export the csv.\n\nCashavailable file: Wealth Scape All Accounts Summary Page. Export the csv for the All Accounts summary page. Make sure your summary page includes the account number column and the cash available to withdraw column.\n""")
 
         directions.config(state='disabled')
 
@@ -174,15 +175,15 @@ class QuarterlyBilling(tk.Frame):
         def runBilling():
 
             output.delete("0.0",tk.END)
-            try:
-                hd = pd.read_csv(self.controller.shared_data["holdings_file"])
-                tb = pd.read_csv(self.controller.shared_data["billing_file"], thousands = ',')
-                tt = pd.read_csv(self.controller.shared_data["transactions_file"])
-                pa = pd.read_csv(self.controller.shared_data["portaccount_file"])
-                ca = pd.read_csv(self.controller.shared_data["cashavailable_file"])
+            #try:
+            hd = pd.read_csv(self.controller.shared_data["holdings_file"])
+            tb = pd.read_csv(self.controller.shared_data["billing_file"], thousands = ',')
+            tt = pd.read_csv(self.controller.shared_data["transactions_file"])
+            pa = pd.read_csv(self.controller.shared_data["portaccount_file"])
+            ca = pd.read_csv(self.controller.shared_data["cashavailable_file"])
 
-            except:
-                messagebox.showwarning("Error","Make sure to input the files in the input files section before running billing.")
+            #except:
+            #             messagebox.showwarning("Error","Make sure to input the files in the input files section before running billing.")
 
             try:
 
@@ -198,9 +199,18 @@ class QuarterlyBilling(tk.Frame):
                 ca.rename(columns={'Cash Avail. to Withdraw': 'WcCashAvailable','Account #': 'AccountNumber'},inplace=True)
                 ### Fill NaN values and change the column names for Trasactions DataFrame.
                 tt.fillna('',inplace=True)
-                print(tt.head())
-                tt.columns = tt.loc[1]
-
+                try:
+                    tt.columns = tt.loc[1]
+                    ### Convert the Market Value from a string to a float.
+                    tt['MarketValue'] = pd.to_numeric(tt['MarketValue'],errors='coerce')
+                except:
+                    try:
+                        tt.columns=tt.loc[0]
+                        ### Convert the Market Value from a string to a float.
+                        tt['MarketValue'] = pd.to_numeric(tt['MarketValue'],errors='coerce')
+                    except:
+                        output.insert(tk.END,'There was an issue with the Transactions csv. Make sure you opened the csv export from Black Diamond in Excel and re-saved it as a new csv file to fix a format error from the export Black Diamond gives you. Re-import the fixed file and re-run billing.')
+                        return
 
                 ### Drop the Portfolios that do not have holdings at the bottom of the Holding Dataframe.
                 hd = hd[0:len(hd['Symbol'].dropna())]
@@ -211,14 +221,11 @@ class QuarterlyBilling(tk.Frame):
                 tb['Fee'] = pd.to_numeric(tb['Fee'],errors='coerce')
 
                 ### Convert Cash Available from a string to a float. $ needs to be removed.
-                print(ca['WcCashAvailable'])
                 ca['WcCashAvailable'] = ca['WcCashAvailable'].apply(lambda x: x.replace('$','').replace(',','').replace('--',''))
                 ca['WcCashAvailable'] = pd.to_numeric(ca['WcCashAvailable'],errors='raise')
 
 
-                ### Convert the Market Value from a string to a float.
 
-                tt['MarketValue'] = pd.to_numeric(tt['MarketValue'],errors='coerce')
 
                 """ Create the Transaction DataFrame that only includes buy orders greater than 999. Sum it to double Check with
                  manually doing the Transaction sheet in Excel."""
