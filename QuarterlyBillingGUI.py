@@ -10,7 +10,6 @@ from PIL import Image, ImageTk
 from tkinter import filedialog
 import datetime
 from datetime import datetime
-from io import StringIO
 
 
 
@@ -175,16 +174,19 @@ class QuarterlyBilling(tk.Frame):
         def runBilling():
 
             output.delete("0.0",tk.END)
-            #try:
-            hd = pd.read_csv(self.controller.shared_data["holdings_file"])
-            tb = pd.read_csv(self.controller.shared_data["billing_file"], thousands = ',')
-            tt = pd.read_csv(self.controller.shared_data["transactions_file"])
-            pa = pd.read_csv(self.controller.shared_data["portaccount_file"])
-            ca = pd.read_csv(self.controller.shared_data["cashavailable_file"])
+            try:
+                hd = pd.read_csv(self.controller.shared_data["holdings_file"])
+                tb = pd.read_csv(self.controller.shared_data["billing_file"], thousands = ',')
+                tt = pd.read_csv(self.controller.shared_data["transactions_file"])
+                pa = pd.read_csv(self.controller.shared_data["portaccount_file"])
+                ca = pd.read_csv(self.controller.shared_data["cashavailable_file"])
 
-            #except:
-            #             messagebox.showwarning("Error","Make sure to input the files in the input files section before running billing.")
-
+            except Exception as e:
+                messagebox.showwarning("Error","Make sure to input the files in the input files section before running billing.\nAlso,make sure you opened the export files in excel and re-saved as a .csv.\nFor Mac make sure you re-saved as a Windows Comma Separated (.csv) not a standard CSV.")
+                import traceback
+                output.insert(tk.END, traceback.format_exc())
+                output.insert(tk.END,"\nMake sure to input the files in the input files section before running billing.\nAlso,make sure you opened the export files in excel and re-saved as a .csv.\nFor Mac make sure you re-saved as a Windows Comma Separated (.csv) not a standard CSV.")
+                output.update()
             try:
 
                 ### This for loop prints out the files used for each required input. If you accidently import the holdings file for billing you will be able to see this.
